@@ -7,107 +7,102 @@ import { ToastContainer } from './components/ui/ToastContainer';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
-import { TicketsView } from './components/views/TicketsView';
-import { InvoicesView } from './components/views/InvoicesView';
-import { HotelsView } from './components/views/HotelsView';
-import { VisasView } from './components/views/VisasView';
-import { CustomersView } from './components/views/CustomersView';
-import { VendorsView } from './components/views/VendorsView';
-import { BSPView } from './components/views/BSPView';
+import { SalesInvoicesView } from './components/views/SalesInvoicesView';
+import { SupplierBillsView } from './components/views/SupplierBillsView';
 import { VouchersView } from './components/views/VouchersView';
-import { RefundsView } from './components/views/RefundsView';
-import { AccountingView } from './components/views/AccountingView';
-import { SettingsView } from './components/views/SettingsView';
+import { ClientLedgersView } from './components/views/ClientLedgersView';
+import { SupplierLedgersView } from './components/views/SupplierLedgersView';
+import { CashBankView } from './components/views/CashBankView';
+import { ReportsView } from './components/views/ReportsView';
+import { ChartOfAccountsView } from './components/views/ChartOfAccountsView';
+import { DataBackupView } from './components/views/DataBackupView';
 
 // Modals
-import { IssueTicketModal } from './components/modals/IssueTicketModal';
-import { CreateVoucherModal } from './components/modals/CreateVoucherModal';
-import { BookHotelModal } from './components/modals/BookHotelModal';
-import { VisaApplicationModal } from './components/modals/VisaApplicationModal';
-import { RefundTicketModal } from './components/modals/RefundTicketModal';
-import { PrintInvoiceModal } from './components/modals/PrintInvoiceModal';
-import { PrintVoucherModal } from './components/modals/PrintVoucherModal';
-import { ManualJournalModal } from './components/modals/ManualJournalModal';
-import { AddCustomerModal } from './components/modals/AddCustomerModal';
-import { AddVendorModal } from './components/modals/AddVendorModal';
+import { NewSaleInvoiceModal } from './components/modals/NewSaleInvoiceModal';
+import { NewSupplierBillModal } from './components/modals/NewSupplierBillModal';
+import { NewVoucherModal } from './components/modals/NewVoucherModal';
+import { NewPartyModal } from './components/modals/NewPartyModal';
+import { PrintSaleInvoiceModal } from './components/modals/PrintSaleInvoiceModal';
 
-import { TicketBooking, Voucher, Customer, VendorSupplier } from './types';
+import { SaleInvoice, SupplierBill, Party, VoucherType } from './types';
 
 const MainAppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
-  // Modal States
-  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  // Modals
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [voucherModalType, setVoucherModalType] = useState<'RV' | 'PV'>('RV');
+  const [voucherType, setVoucherType] = useState<VoucherType>('RV');
   const [voucherPartyId, setVoucherPartyId] = useState<string | undefined>(undefined);
   const [voucherAmount, setVoucherAmount] = useState<number | undefined>(undefined);
 
-  const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
-  const [isVisaModalOpen, setIsVisaModalOpen] = useState(false);
-  const [isManualJournalOpen, setIsManualJournalOpen] = useState(false);
-  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
-  const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+  const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
+  const [partyModalDefaultType, setPartyModalDefaultType] = useState<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
 
-  // Active print and refund targets
-  const [activePrintTicket, setActivePrintTicket] = useState<TicketBooking | null>(null);
-  const [activeRefundTicket, setActiveRefundTicket] = useState<TicketBooking | null>(null);
-  const [activePrintVoucher, setActivePrintVoucher] = useState<Voucher | null>(null);
+  const [activePrintInvoice, setActivePrintInvoice] = useState<SaleInvoice | null>(null);
 
-  // Quick Action Handler from Navbar or Dashboard
-  const handleQuickAction = (actionType: 'ticket' | 'receipt' | 'payment' | 'hotel' | 'visa') => {
-    if (actionType === 'ticket') {
-      setIsTicketModalOpen(true);
+  const handleQuickAction = (actionType: 'sale' | 'receipt' | 'payment' | 'voucher' | 'party') => {
+    if (actionType === 'sale') {
+      setIsSaleModalOpen(true);
     } else if (actionType === 'receipt') {
-      setVoucherModalType('RV');
+      setVoucherType('RV');
       setVoucherPartyId(undefined);
       setVoucherAmount(undefined);
       setIsVoucherModalOpen(true);
     } else if (actionType === 'payment') {
-      setVoucherModalType('PV');
+      setVoucherType('PV');
       setVoucherPartyId(undefined);
       setVoucherAmount(undefined);
       setIsVoucherModalOpen(true);
-    } else if (actionType === 'hotel') {
-      setIsHotelModalOpen(true);
-    } else if (actionType === 'visa') {
-      setIsVisaModalOpen(true);
+    } else if (actionType === 'party') {
+      setPartyModalDefaultType('CUSTOMER');
+      setIsPartyModalOpen(true);
     }
   };
 
-  const handleReceivePaymentForCustomer = (customer: Customer) => {
-    setVoucherModalType('RV');
-    setVoucherPartyId(customer.id);
-    setVoucherAmount(customer.currentBalance > 0 ? customer.currentBalance : 500);
+  const handleReceiveFromCustomer = (party: Party) => {
+    setVoucherType('RV');
+    setVoucherPartyId(party.id);
+    setVoucherAmount(party.currentBalance > 0 ? party.currentBalance : 50000);
     setIsVoucherModalOpen(true);
   };
 
-  const handleIssuePaymentToVendor = (vendor: VendorSupplier) => {
-    setVoucherModalType('PV');
-    setVoucherPartyId(vendor.id);
-    setVoucherAmount(vendor.balance > 0 ? vendor.balance : 1000);
+  const handlePayToSupplier = (party: Party) => {
+    setVoucherType('PV');
+    setVoucherPartyId(party.id);
+    setVoucherAmount(party.currentBalance > 0 ? party.currentBalance : 100000);
+    setIsVoucherModalOpen(true);
+  };
+
+  const handlePayAgainstBill = (bill: SupplierBill) => {
+    setVoucherType('PV');
+    setVoucherPartyId(bill.supplierId);
+    setVoucherAmount(bill.balanceDue);
+    setIsVoucherModalOpen(true);
+  };
+
+  const handleReceiveAgainstInvoice = (inv: SaleInvoice) => {
+    setVoucherType('RV');
+    setVoucherPartyId(inv.customerId);
+    setVoucherAmount(inv.balanceDue);
     setIsVoucherModalOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-cream-900 flex flex-col">
-      {/* Top Creamy Animated Loading Bar */}
       <LoadingBar />
-
-      {/* Creamy Toasts */}
       <ToastContainer />
 
-      {/* Main Navbar */}
       <Navbar
         onOpenQuickAction={handleQuickAction}
         onSearch={(query) => {
-          if (query.trim().length > 0 && activeTab !== 'tickets') {
-            setActiveTab('tickets');
+          if (query.trim().length > 0 && activeTab !== 'sales') {
+            setActiveTab('sales');
           }
         }}
       />
 
-      {/* Body with Sidebar and Main Content */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -119,128 +114,87 @@ const MainAppContent: React.FC = () => {
             />
           )}
 
-          {activeTab === 'tickets' && (
-            <TicketsView
-              onOpenQuickAction={() => setIsTicketModalOpen(true)}
-              onPrintTicket={(tkt) => setActivePrintTicket(tkt)}
-              onRefundTicket={(tkt) => setActiveRefundTicket(tkt)}
+          {activeTab === 'sales' && (
+            <SalesInvoicesView
+              onOpenNewSale={() => setIsSaleModalOpen(true)}
+              onPrintInvoice={(inv) => setActivePrintInvoice(inv)}
+              onReceivePayment={handleReceiveAgainstInvoice}
             />
           )}
 
-          {activeTab === 'invoices' && (
-            <InvoicesView
-              onPrintInvoice={(tkt) => setActivePrintTicket(tkt)}
-              onReceivePayment={(tkt) => {
-                setVoucherModalType('RV');
-                setVoucherPartyId(tkt.customerId);
-                setVoucherAmount(tkt.clientSellingPrice - tkt.paidAmount);
-                setIsVoucherModalOpen(true);
-              }}
+          {activeTab === 'bills' && (
+            <SupplierBillsView
+              onOpenNewBill={() => setIsBillModalOpen(true)}
+              onPayBill={handlePayAgainstBill}
             />
           )}
-
-          {activeTab === 'hotels' && (
-            <HotelsView
-              onOpenQuickAction={() => setIsHotelModalOpen(true)}
-            />
-          )}
-
-          {activeTab === 'visas' && (
-            <VisasView
-              onOpenQuickAction={() => setIsVisaModalOpen(true)}
-            />
-          )}
-
-          {activeTab === 'customers' && (
-            <CustomersView
-              onReceivePaymentForCustomer={handleReceivePaymentForCustomer}
-              onAddNewCustomer={() => setIsAddCustomerOpen(true)}
-            />
-          )}
-
-          {activeTab === 'vendors' && (
-            <VendorsView
-              onIssuePaymentToVendor={handleIssuePaymentToVendor}
-              onAddNewVendor={() => setIsAddVendorOpen(true)}
-            />
-          )}
-
-          {activeTab === 'bsp' && <BSPView />}
 
           {activeTab === 'vouchers' && (
             <VouchersView
               onOpenQuickAction={handleQuickAction}
-              onPrintVoucher={(v) => setActivePrintVoucher(v)}
+              onPrintVoucher={() => {}}
             />
           )}
 
-          {activeTab === 'refunds' && <RefundsView />}
-
-          {activeTab === 'accounting' && (
-            <AccountingView
-              onOpenManualJournal={() => setIsManualJournalOpen(true)}
+          {activeTab === 'clientLedgers' && (
+            <ClientLedgersView
+              onOpenNewParty={() => {
+                setPartyModalDefaultType('CUSTOMER');
+                setIsPartyModalOpen(true);
+              }}
+              onReceivePayment={handleReceiveFromCustomer}
             />
           )}
 
-          {activeTab === 'settings' && <SettingsView />}
+          {activeTab === 'supplierLedgers' && (
+            <SupplierLedgersView
+              onOpenNewParty={() => {
+                setPartyModalDefaultType('SUPPLIER');
+                setIsPartyModalOpen(true);
+              }}
+              onPaySupplier={handlePayToSupplier}
+            />
+          )}
+
+          {activeTab === 'cashBank' && <CashBankView />}
+
+          {activeTab === 'reports' && <ReportsView />}
+
+          {activeTab === 'coa' && <ChartOfAccountsView />}
+
+          {activeTab === 'data' && <DataBackupView />}
         </main>
       </div>
 
-      {/* Interactive Modals */}
-      <IssueTicketModal
-        isOpen={isTicketModalOpen}
-        onClose={() => setIsTicketModalOpen(false)}
+      {/* Modals */}
+      <NewSaleInvoiceModal
+        isOpen={isSaleModalOpen}
+        onClose={() => setIsSaleModalOpen(false)}
       />
 
-      <CreateVoucherModal
+      <NewSupplierBillModal
+        isOpen={isBillModalOpen}
+        onClose={() => setIsBillModalOpen(false)}
+      />
+
+      <NewVoucherModal
         isOpen={isVoucherModalOpen}
         onClose={() => setIsVoucherModalOpen(false)}
-        initialType={voucherModalType}
+        initialType={voucherType}
         initialPartyId={voucherPartyId}
         initialAmount={voucherAmount}
       />
 
-      <BookHotelModal
-        isOpen={isHotelModalOpen}
-        onClose={() => setIsHotelModalOpen(false)}
+      <NewPartyModal
+        isOpen={isPartyModalOpen}
+        onClose={() => setIsPartyModalOpen(false)}
+        defaultType={partyModalDefaultType}
       />
 
-      <VisaApplicationModal
-        isOpen={isVisaModalOpen}
-        onClose={() => setIsVisaModalOpen(false)}
-      />
-
-      <RefundTicketModal
-        isOpen={!!activeRefundTicket}
-        ticket={activeRefundTicket}
-        onClose={() => setActiveRefundTicket(null)}
-      />
-
-      <PrintInvoiceModal
-        isOpen={!!activePrintTicket}
-        ticket={activePrintTicket}
-        onClose={() => setActivePrintTicket(null)}
-      />
-
-      <PrintVoucherModal
-        isOpen={!!activePrintVoucher}
-        voucher={activePrintVoucher}
-        onClose={() => setActivePrintVoucher(null)}
-      />
-
-      <ManualJournalModal
-        isOpen={isManualJournalOpen}
-        onClose={() => setIsManualJournalOpen(false)}
-      />
-
-      <AddCustomerModal
-        isOpen={isAddCustomerOpen}
-        onClose={() => setIsAddCustomerOpen(false)}
-      />
-
-      <AddVendorModal
-        isOpen={isAddVendorOpen}
-        onClose={() => setIsAddVendorOpen(false)}
+      <PrintSaleInvoiceModal
+        isOpen={!!activePrintInvoice}
+        invoice={activePrintInvoice}
+        onClose={() => setActivePrintInvoice(null)}
       />
 
     </div>

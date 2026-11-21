@@ -1,15 +1,6 @@
-// Types for Travel Agency Accounting System (VoyageLedger)
+// Pure Accounting Types for Travel Agency Business
 
-export type CurrencyCode = 'USD' | 'SAR' | 'AED' | 'PKR' | 'EUR' | 'GBP';
-
-export interface ExchangeRate {
-  code: CurrencyCode;
-  symbol: string;
-  name: string;
-  rateToBase: number; // base is USD
-}
-
-export type AccountCategory = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+export type AccountCategory = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
 
 export interface Account {
   id: string;
@@ -18,221 +9,106 @@ export interface Account {
   category: AccountCategory;
   subCategory: string;
   balance: number;
-  description?: string;
   isSystem?: boolean;
 }
 
-export interface JournalLine {
-  accountId: string;
-  accountCode: string;
-  accountName: string;
-  debit: number;
-  credit: number;
-  description?: string;
+export type PartyType = 'CUSTOMER' | 'SUPPLIER';
+
+export interface Party {
+  id: string;
+  type: PartyType;
+  name: string;
+  companyName?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  creditLimit?: number;
+  creditDays?: number;
+  openingBalance: number;
+  currentBalance: number; // For customers: positive = receivable. For suppliers: positive = payable.
 }
 
-export type VoucherType = 'TICKET_ISSUE' | 'INVOICE' | 'RECEIPT' | 'PAYMENT' | 'REFUND' | 'ADM' | 'ACM' | 'JOURNAL';
+export type ServiceType = 'AIR_TICKET' | 'HOTEL' | 'VISA' | 'UMRAH_HAJJ' | 'TOUR_PACKAGE' | 'OTHER';
 
-export interface JournalEntry {
+export interface SaleInvoiceItem {
   id: string;
-  entryNumber: string;
-  date: string;
-  voucherType: VoucherType;
-  referenceNo: string;
+  serviceType: ServiceType;
   description: string;
-  lines: JournalLine[];
-  totalDebit: number;
-  totalCredit: number;
-  createdAt: string;
+  pnr?: string;
+  ticketNumber?: string;
+  passengerName?: string;
+  sector?: string; // e.g. LHE-DXB-LHR
+  travelDate?: string;
+  supplierId: string; // Airline or Supplier (e.g., Emirates, IATA, Hotelbeds)
+  costPrice: number; // Cost owed to supplier
+  salePrice: number; // Amount charged to client
+  margin: number; // salePrice - costPrice
 }
 
-export type GdsSystem = 'Amadeus' | 'Sabre' | 'Galileo' | 'Direct NDC';
-export type TicketStatus = 'ISSUED' | 'REISSUED' | 'REFUNDED' | 'VOID';
-export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
-
-export interface TicketBooking {
+export interface SaleInvoice {
   id: string;
-  ticketNumber: string; // 13-digit e-ticket (e.g. 176-5839201948)
-  pnr: string; // 6-char GDS PNR
-  gds: GdsSystem;
-  airlineCode: string; // EK, QR, SV, PK, etc.
-  airlineName: string;
-  passengerName: string;
-  passengerType: 'Adult' | 'Child' | 'Infant';
-  sector: string; // e.g. DXB-LHR-JFK
-  flightDate: string;
-  issueDate: string;
-  cabinClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
-  
-  // Financials
-  baseFare: number;
-  taxes: number; // airport & government taxes
-  grossFare: number; // baseFare + taxes
-  airlineCommissionPercent: number;
-  airlineCommissionAmount: number;
-  markupAmount: number; // agency service fee or extra markup
-  netCostToAirline: number; // grossFare - commission
-  clientSellingPrice: number; // grossFare + markupAmount - discount
-  discount: number;
-  
-  customerId: string;
-  customerName: string;
-  vendorId: string; // Airline or Consolidator
-  status: TicketStatus;
-  paymentStatus: PaymentStatus;
-  paidAmount: number;
-}
-
-export interface HotelBooking {
-  id: string;
-  voucherNo: string;
-  confirmationNo: string;
-  hotelName: string;
-  city: string;
-  country: string;
-  checkIn: string;
-  checkOut: string;
-  nights: number;
-  roomType: string;
-  mealPlan: 'Room Only' | 'Bed & Breakfast' | 'Half Board' | 'Full Board' | 'All Inclusive';
-  guestName: string;
-  vendorName: string; // Hotelbeds, Expedia, Direct Hotel
-  buyingCost: number;
-  sellingPrice: number;
-  profitMargin: number;
-  customerId: string;
-  customerName: string;
-  status: 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
-  issueDate: string;
-}
-
-export interface UmrahPackage {
-  id: string;
-  packageCode: string;
-  packageName: string;
-  groupLeader: string;
-  paxCount: number;
-  durationDays: number;
-  makkahHotel: string;
-  madinahHotel: string;
-  visaCostPerPax: number;
-  hotelCostPerPax: number;
-  transportCostPerPax: number;
-  totalCost: number;
-  sellingPrice: number;
-  profit: number;
-  customerId: string;
-  customerName: string;
-  departureDate: string;
-  status: 'INQUIRY' | 'CONFIRMED' | 'TRAVELLING' | 'COMPLETED';
-}
-
-export interface VisaApplication {
-  id: string;
-  refNumber: string;
-  applicantName: string;
-  passportNumber: string;
-  nationality: string;
-  destinationCountry: string;
-  visaType: 'Tourist 30D' | 'Tourist 90D' | 'Business' | 'Work' | 'Umrah eVisa';
-  embassyFee: number;
-  serviceCharge: number;
-  totalSellingPrice: number;
-  supplierName: string;
-  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'COLLECTED';
-  applicationDate: string;
-  customerId: string;
-  customerName: string;
-}
-
-export interface RefundRecord {
-  id: string;
-  refundNumber: string;
-  ticketNumber: string;
-  pnr: string;
-  passengerName: string;
-  airlineName: string;
-  customerId: string;
-  customerName: string;
-  originalGrossFare: number;
-  airlineCancellationPenalty: number;
-  agencyRefundServiceFee: number;
-  netCustomerRefund: number;
-  acmNumber?: string; // Agency Credit Memo from Airline
-  refundDate: string;
-  status: 'PENDING' | 'PROCESSED' | 'CREDITED_TO_CLIENT';
-}
-
-export interface ADMRecord {
-  id: string;
-  admNumber: string;
-  airlineCode: string;
-  airlineName: string;
-  ticketNumber: string;
-  pnr: string;
-  reason: 'Fare Discrepancy' | 'Class Mismatch' | 'Tax Undercollection' | 'Baggage Rule' | 'Void Window Violation';
-  amount: number;
-  issueDate: string;
+  invoiceNumber: string; // e.g. INV-1001
+  date: string;
   dueDate: string;
-  status: 'OPEN' | 'DISPUTED' | 'ACCEPTED_PAID' | 'WAIVED';
-  notes: string;
+  customerId: string;
+  customerName: string;
+  paymentType: 'CREDIT' | 'CASH' | 'BANK';
+  depositAccountId?: string; // If paid in cash/bank directly
+  items: SaleInvoiceItem[];
+  totalCost: number;
+  totalSale: number;
+  totalProfit: number;
+  paidAmount: number;
+  balanceDue: number;
+  status: 'PAID' | 'PARTIAL' | 'UNPAID';
+  notes?: string;
 }
 
-export interface Customer {
+export interface SupplierBill {
   id: string;
-  name: string;
-  type: 'Corporate' | 'Sub-Agent' | 'Individual';
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address: string;
-  creditLimit: number;
-  creditDays: number;
-  currentBalance: number; // positive = customer owes agency, negative = advance balance
-  currency: CurrencyCode;
+  billNumber: string; // e.g. BILL-501 or IATA invoice ref
+  date: string;
+  dueDate: string;
+  supplierId: string;
+  supplierName: string;
+  description: string;
+  amount: number;
+  paidAmount: number;
+  balanceDue: number;
+  status: 'PAID' | 'PARTIAL' | 'UNPAID';
 }
 
-export interface VendorSupplier {
-  id: string;
-  name: string;
-  type: 'Airline' | 'GDS Consolidator' | 'Hotel Provider' | 'Visa Provider';
-  code: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  balance: number; // positive = agency owes vendor
-  currency: CurrencyCode;
-}
+export type VoucherType = 'RV' | 'PV' | 'JV' | 'CN' | 'DN'; 
+// RV: Receipt Voucher (Cash/Bank in from client)
+// PV: Payment Voucher (Cash/Bank out to supplier or expense)
+// JV: Journal Voucher (Non-cash transfer/adjustment)
+// CN: Credit Note (Client discount / ticket refund)
+// DN: Debit Note (Supplier penalty / extra charge)
 
 export interface Voucher {
   id: string;
-  voucherNumber: string;
-  type: 'RV' | 'PV' | 'JV' | 'CN' | 'DN'; // Receipt, Payment, Journal, Credit Note, Debit Note
+  voucherNumber: string; // e.g. RV-2026-001
+  type: VoucherType;
   date: string;
-  partyType: 'CUSTOMER' | 'VENDOR' | 'GENERAL';
-  partyId: string;
-  partyName: string;
+  partyId?: string;
+  partyName?: string;
+  debitAccountId: string;
+  debitAccountName: string;
+  creditAccountId: string;
+  creditAccountName: string;
   amount: number;
-  currency: CurrencyCode;
-  paymentMethod: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Credit Card' | 'Direct Adjustment';
-  bankAccount?: string;
-  referenceNo: string;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'ONLINE' | 'ADJUSTMENT';
+  chequeOrRefNo?: string;
   narration: string;
-  status: 'POSTED' | 'DRAFT';
 }
 
-export interface BSPSettlement {
+export interface LedgerTransaction {
   id: string;
-  periodName: string; // e.g. "2026-11-P2 (16-30 Nov)"
-  startDate: string;
-  endDate: string;
-  airlineCount: number;
-  ticketCount: number;
-  grossSales: number;
-  refunds: number;
-  airlineCommissions: number;
-  taxRemitted: number;
-  netPayableToIATA: number;
-  status: 'PENDING_RECONCILIATION' | 'RECONCILED' | 'SETTLED';
-  settlementDate?: string;
+  date: string;
+  voucherNo: string;
+  type: string;
+  particulars: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
 }

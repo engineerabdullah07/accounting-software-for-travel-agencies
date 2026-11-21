@@ -1,79 +1,87 @@
-# VoyageLedger: Open-Source Accounting Software for Travel Agencies
+# TravelLedger: Double-Entry Accounting & Khata Software for Travel Agencies
 
-**VoyageLedger** is a full-featured, open-source ERP and double-entry accounting software designed specifically for the unique operational workflows of modern travel agencies, consolidators, tour operators, and Umrah/Hajj service providers.
+**TravelLedger** is an open-source, offline-ready double-entry accounting and khata ERP system created specifically for **travel agencies, consolidators, and tour operators**.
 
-Designed with a creamy, high-end warm aesthetic, smooth micro-interactions, live loading progress bars, and balanced financial ledgers.
+Unlike generic booking engines or flight simulations, **TravelLedger focuses 100% on actual travel business accounting**:
+- Managing client credit khatas
+- Supplier & airline payables
+- Receipt Vouchers (RV) & Payment Vouchers (PV)
+- Cash & Bank registers
+- Day Book (Roznamcha)
+- Trial Balance, Profit & Loss (P&L), and Balance Sheet
+- Excel / CSV ticket sales import
 
----
-
-## Key Modules & Features
-
-### 1. Air Ticketing & GDS Operations
-- **Multi-GDS Support**: Amadeus, Sabre, Travelport Galileo, and Direct NDC booking reconciliation.
-- **Automated Fare Construction**: Base fare, fuel surcharges, airport taxes (YQ, RG, etc.), standard airline commission, overriding incentives (ORC), and agency service fees.
-- **Double-Entry Automation**: Automatically debits Accounts Receivable and credits Airline Payables and Commission Revenue on ticket issuance.
-
-### 2. IATA BSP Clearing & Settlement
-- **Fortnightly Cycles**: Period 1 (01-15) and Period 2 (16-30/31) tracking.
-- **3-Way Reconciliation**: Compares internal ticket records against airline gross billing with variance detection.
-- **ACM / ADM Management**: Handles Agency Credit Memos and Agency Debit Memos with dispute tracking.
-
-### 3. Hotel Vouchers & Religious Tourism (Umrah/Hajj)
-- **Bedbank Reconciliation**: Hotelbeds, Agoda B2B, and direct hotel contract tracking.
-- **Group Package Costing**: Per-pax visa, accommodation, and transport margin calculations.
-
-### 4. Visa Processing & Embassy Charges
-- Tracks official embassy consular fees vs agency consultancy margins.
-- Application status pipeline (Submitted, Under Review, Approved, Collected).
-
-### 5. Corporate Client Receivables & Aging
-- B2B corporate credit limits, payment credit days, and quota monitoring.
-- Aging analysis buckets (Current 0-30 days, 31-60 days, 60+ days overdue).
-- Printable client statement of account with running debit/credit balances.
-
-### 6. Comprehensive Double-Entry Engine
-- **Chart of Accounts (COA)**: Tailored 6-digit classification (Assets, Liabilities, Equity, Operating Revenue, Direct Costs, Operating Expenses).
-- **General Journal**: Every transaction recorded with balanced Debits and Credits.
-- **Trial Balance**: Real-time equilibrium verification.
-- **Profit & Loss (P&L)**: Live breakdown of flight commissions, hotel margins, visa revenue, and overhead.
-- **Balance Sheet**: Assets = Liabilities + Equity.
-
-### 7. Multi-Currency Engine
-- Real-time conversion across USD, SAR, AED, PKR, EUR, and GBP.
-- Foreign exchange gain/loss tracking.
+Styled with a luxurious creamy aesthetic, smooth micro-interactions, and live loading progress indicators.
 
 ---
 
-## Tech Stack
+## Core Travel Agency Accounting Modules
 
-- **Frontend**: React 19, TypeScript, Vite
-- **Styling**: Tailwind CSS (Custom Creamy Palette: `#FAF8F5`, `#EBE3DA`, `#C69D3B`)
-- **Icons**: Lucide React
-- **Storage**: Browser LocalStorage & JSON Export/Import
+### 1. Sales Invoicing (Tickets, Hotels, Visas, Umrah)
+- Record sales invoices for any service (Air Ticket, Hotel, Visa, Umrah, Tour).
+- Capture PNR, Ticket Number, Passenger Name, Sector/Route, Travel Date.
+- Select Client Khata and Supplier (Airline / Consolidator / Bedbank).
+- Enter **Supplier Net Cost** vs **Customer Sale Price** — automatically computes gross profit margin!
+- Payment options: Credit (Charge to Client Khata), Cash in Hand, or Bank Deposit.
+
+### 2. Supplier & Airline Bills (Purchases)
+- Enter billing statements received from IATA BSP, ticketing consolidators, hotel beds, or visa agencies.
+- Track total bill amount, payments released, and outstanding payable balance.
+
+### 3. Vouchers Center (RV / PV / JV / CN / DN)
+- **Receipt Voucher (RV)**: Cash or bank transfer received from clients with cheque/wire reference.
+- **Payment Voucher (PV)**: Released payments to suppliers, airlines, or office expenses (Rent, Salaries, Tea/Refreshment).
+- **Journal Voucher (JV)**: Non-cash balance transfers & adjustments.
+- **Credit Note (CN)**: Ticket refund credits and client discounts.
+
+### 4. Client Ledgers (Party Statements / Khata)
+- Select any corporate client, sub-agent, or passenger.
+- Filter by date range (From Date - To Date) with opening and closing balances.
+- Itemized running ledger: Date, Voucher #, Service Particulars (PNR, Passenger, Sector), Debit, Credit, and Running Balance.
+- One-click **Print Statement** formatted with agency letterhead & signature lines.
+
+### 5. Supplier Ledgers (Payables Khata)
+- Complete reconciliation statement for IATA BSP, ticketing consolidators, and hotel beds.
+- Track bills received vs payments released with running balance.
+
+### 6. Cash Book & Bank Registers
+- **Cash in Hand (Safe Vault)** counter register.
+- **Bank Registers** (Meezan Bank, HBL, Standard Chartered USD, Al-Rajhi SAR).
+- Complete running register of every deposit, withdrawal, and cheque.
+
+### 7. Financial Statements & Audit Reports
+- **Trial Balance**: Real-time equilibrium verification ensuring Total Debits = Total Credits.
+- **Profit & Loss (P&L)**: Live breakdown of travel operating margins vs operating expenses.
+- **Balance Sheet**: Assets = Liabilities + Capital & Retained Earnings.
+- **Roznamcha (Day Book)**: Chronological daily transaction register.
+
+### 8. Excel / CSV Import & JSON Data Backup
+- **Bulk Paste Import**: Paste ticket sales directly from Excel/CSV to auto-generate invoices and post to ledgers.
+- **Complete Backup & Restore**: Export and restore entire financial books with one click (JSON).
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm (v9 or higher)
+- Node.js (v18+)
+- npm (v9+)
 
-### Installation
+### Installation & Run
 
 ```bash
 # Clone the repository
-git clone https://github.com/USER/accounting-software-for-travel-agencies.git
+git clone https://github.com/nexusworks421-boop/accounting-software-for-travel-agencies.git
 cd accounting-software-for-travel-agencies
 
 # Install dependencies
 npm install
 
-# Start development server
+# Start local server
 npm run dev
 ```
 
-Visit `http://localhost:5173` in your browser.
+Open `http://localhost:5173` in your browser.
 
 ### Production Build
 
@@ -86,4 +94,4 @@ npm run preview
 
 ## License
 
-This project is open-source under the [MIT License](LICENSE).
+Open-source under the [MIT License](LICENSE).

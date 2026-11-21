@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAccounting } from '../../context/AccountingContext';
 import { Voucher } from '../../types';
-import { CreditCard, Plus, ArrowDownLeft, ArrowUpRight, FileText, Printer, Search } from 'lucide-react';
+import { CreditCard, Plus, ArrowDownLeft, ArrowUpRight, Search, Printer } from 'lucide-react';
 
 interface VouchersViewProps {
   onOpenQuickAction: (actionType: 'receipt' | 'payment') => void;
@@ -9,7 +9,7 @@ interface VouchersViewProps {
 }
 
 export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, onPrintVoucher }) => {
-  const { vouchers, formatCurrency } = useAccounting();
+  const { vouchers, formatMoney } = useAccounting();
   const [filterType, setFilterType] = useState<string>('ALL');
   const [search, setSearch] = useState('');
 
@@ -17,8 +17,8 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
     const matchesType = filterType === 'ALL' || v.type === filterType;
     const matchesSearch = 
       v.voucherNumber.toLowerCase().includes(search.toLowerCase()) ||
-      v.partyName.toLowerCase().includes(search.toLowerCase()) ||
-      v.referenceNo.toLowerCase().includes(search.toLowerCase()) ||
+      (v.partyName && v.partyName.toLowerCase().includes(search.toLowerCase())) ||
+      (v.chequeOrRefNo && v.chequeOrRefNo.toLowerCase().includes(search.toLowerCase())) ||
       v.narration.toLowerCase().includes(search.toLowerCase());
     return matchesType && matchesSearch;
   });
@@ -28,10 +28,10 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-cream-950 tracking-tight">
-            Voucher Management Center (RV / PV / JV)
+            Voucher Management Center (RV / PV / JV / CN)
           </h1>
           <p className="text-xs text-cream-500 mt-1">
-            Receipt Vouchers (RV), Payment Vouchers (PV), Journal Vouchers (JV), and bank adjustments.
+            Receipt Vouchers (RV), Payment Vouchers (PV), Journal Vouchers (JV), and client Credit Notes.
           </p>
         </div>
 
@@ -61,13 +61,13 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search voucher number, client, cheque ref..."
+            placeholder="Search voucher number, party, cheque ref..."
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-cream-50/60 border border-cream-200 rounded-lg text-cream-900 placeholder-cream-400 focus:outline-none focus:ring-2 focus:ring-gold-500/40"
           />
         </div>
 
         <div className="flex items-center gap-1 bg-cream-100/70 p-1 rounded-xl">
-          {['ALL', 'RV', 'PV', 'JV'].map(tab => (
+          {['ALL', 'RV', 'PV', 'JV', 'CN'].map(tab => (
             <button
               key={tab}
               onClick={() => setFilterType(tab)}
@@ -77,7 +77,7 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
                   : 'text-cream-600 hover:text-cream-900'
               }`}
             >
-              {tab === 'ALL' ? 'All Vouchers' : tab === 'RV' ? 'Receipts (RV)' : tab === 'PV' ? 'Payments (PV)' : 'Journals (JV)'}
+              {tab === 'ALL' ? 'All Vouchers' : tab === 'RV' ? 'Receipts (RV)' : tab === 'PV' ? 'Payments (PV)' : tab === 'JV' ? 'Journals (JV)' : 'Credit Notes'}
             </button>
           ))}
         </div>
@@ -91,9 +91,9 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
               <th className="py-3 px-4">Voucher No</th>
               <th className="py-3 px-3">Date</th>
               <th className="py-3 px-3">Type</th>
-              <th className="py-3 px-3">Party Name</th>
-              <th className="py-3 px-3">Payment Method & Ref</th>
-              <th className="py-3 px-3">Narration</th>
+              <th className="py-3 px-3">Party / Account</th>
+              <th className="py-3 px-3">Debit / Credit Accounts</th>
+              <th className="py-3 px-3">Method & Ref</th>
               <th className="py-3 px-3 text-right">Amount</th>
               <th className="py-3 px-4 text-center">Print</th>
             </tr>
@@ -104,7 +104,7 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
                 <td className="py-3 px-4 font-mono font-bold text-cream-950">
                   {v.voucherNumber}
                 </td>
-                <td className="py-3 px-3 text-cream-600">{v.date}</td>
+                <td className="py-3 px-3 text-cream-600 font-mono">{v.date}</td>
                 <td className="py-3 px-3">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     v.type === 'RV'
@@ -116,16 +116,20 @@ export const VouchersView: React.FC<VouchersViewProps> = ({ onOpenQuickAction, o
                     {v.type}
                   </span>
                 </td>
-                <td className="py-3 px-3 font-semibold text-cream-900">{v.partyName}</td>
+                <td className="py-3 px-3 font-semibold text-cream-900">
+                  {v.partyName || v.debitAccountName}
+                  <div className="text-[11px] text-cream-500 font-normal">{v.narration}</div>
+                </td>
+                <td className="py-3 px-3 text-[11px] font-mono text-cream-600">
+                  <div>Dr: {v.debitAccountName}</div>
+                  <div>Cr: {v.creditAccountName}</div>
+                </td>
                 <td className="py-3 px-3 text-cream-700">
                   <div className="font-medium">{v.paymentMethod}</div>
-                  <div className="text-[10px] text-cream-400 font-mono">Ref: {v.referenceNo}</div>
-                </td>
-                <td className="py-3 px-3 text-cream-600 max-w-xs truncate">
-                  {v.narration}
+                  {v.chequeOrRefNo && <div className="text-[10px] text-cream-400 font-mono">Ref: {v.chequeOrRefNo}</div>}
                 </td>
                 <td className="py-3 px-3 text-right font-mono font-extrabold text-sm text-cream-950">
-                  {formatCurrency(v.amount)}
+                  {formatMoney(v.amount)}
                 </td>
                 <td className="py-3 px-4 text-center">
                   <button

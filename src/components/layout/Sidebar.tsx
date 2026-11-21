@@ -1,32 +1,30 @@
 import React from 'react';
 import {
   LayoutDashboard,
-  Plane,
   Receipt,
-  Hotel,
-  Globe,
+  FileText,
+  CreditCard,
   Users,
   Building,
+  Wallet,
   Scale,
-  CreditCard,
-  RotateCcw,
   BookOpen,
-  DollarSign
+  Database,
+  ArrowDownLeft,
+  ArrowUpRight
 } from 'lucide-react';
 
 export type NavTab = 
   | 'dashboard'
-  | 'tickets'
-  | 'invoices'
-  | 'hotels'
-  | 'visas'
-  | 'customers'
-  | 'vendors'
-  | 'bsp'
+  | 'sales'
+  | 'bills'
   | 'vouchers'
-  | 'refunds'
-  | 'accounting'
-  | 'settings';
+  | 'clientLedgers'
+  | 'supplierLedgers'
+  | 'cashBank'
+  | 'reports'
+  | 'coa'
+  | 'data';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -50,33 +48,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     {
       title: 'OVERVIEW',
       items: [
-        { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, badge: 'Live' }
+        { id: 'dashboard', label: 'Financial Dashboard', icon: LayoutDashboard }
       ]
     },
     {
-      title: 'TRAVEL OPERATIONS',
+      title: 'TRANSACTIONS & BILLING',
       items: [
-        { id: 'tickets', label: 'Air Tickets & PNRs', icon: Plane },
-        { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
-        { id: 'hotels', label: 'Hotels & Umrah Packages', icon: Hotel },
-        { id: 'visas', label: 'Visa Processing', icon: Globe },
+        { id: 'sales', label: 'Sales Invoices (Tickets/Tours)', icon: Receipt },
+        { id: 'bills', label: 'Supplier / Airline Bills', icon: FileText },
+        { id: 'vouchers', label: 'Vouchers Center (RV/PV/JV)', icon: CreditCard, badge: 'Core' }
       ]
     },
     {
-      title: 'FINANCIAL LEDGERS',
+      title: 'KHATAS & STATEMENTS',
       items: [
-        { id: 'customers', label: 'Customer Receivables', icon: Users },
-        { id: 'vendors', label: 'Airline & Vendor Payables', icon: Building },
-        { id: 'bsp', label: 'IATA BSP Settlement', icon: Scale, badge: 'Period 2' },
-        { id: 'vouchers', label: 'Vouchers (RV / PV / JV)', icon: CreditCard },
-        { id: 'refunds', label: 'Refunds & ADMs', icon: RotateCcw },
+        { id: 'clientLedgers', label: 'Client Ledgers (Khata)', icon: Users },
+        { id: 'supplierLedgers', label: 'Supplier & Airline Ledgers', icon: Building },
+        { id: 'cashBank', label: 'Cash Book & Bank Registers', icon: Wallet }
       ]
     },
     {
-      title: 'ACCOUNTING & REPORTS',
+      title: 'AUDIT & REPORTS',
       items: [
-        { id: 'accounting', label: 'General Ledger & Reports', icon: BookOpen },
-        { id: 'settings', label: 'Forex & Agency Setup', icon: DollarSign },
+        { id: 'reports', label: 'Trial Balance & P&L', icon: Scale },
+        { id: 'coa', label: 'Chart of Accounts (COA)', icon: BookOpen },
+        { id: 'data', label: 'Excel Import & Data Backup', icon: Database }
       ]
     }
   ];
@@ -124,13 +120,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
         ))}
       </div>
 
-      {/* Agency Footer Card */}
+      {/* Agency Accounting Footer */}
       <div className="p-4 border-t border-cream-200 bg-cream-50/50">
-        <div className="flex items-center gap-2 text-xs font-semibold text-cream-900">
-          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-          <span>IATA Accr. # 27-2-8910</span>
-        </div>
-        <p className="text-[11px] text-cream-500 mt-0.5">SkyHorizon Travels & Tourism</p>
+        <div className="text-xs font-bold text-cream-950">Travel Agency Accounting</div>
+        <p className="text-[11px] text-cream-500 mt-0.5">Offline-first • Balanced Ledger</p>
       </div>
     </aside>
   );

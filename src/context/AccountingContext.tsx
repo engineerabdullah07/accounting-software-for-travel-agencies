@@ -1,34 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Account,
-  Customer,
-  VendorSupplier,
-  TicketBooking,
-  HotelBooking,
-  UmrahPackage,
-  VisaApplication,
-  RefundRecord,
-  ADMRecord,
+  Party,
+  SaleInvoice,
+  SupplierBill,
   Voucher,
-  BSPSettlement,
-  JournalEntry,
-  CurrencyCode,
-  ExchangeRate
+  LedgerTransaction
 } from '../types';
 import {
   initialChartOfAccounts,
-  initialCustomers,
-  initialVendors,
-  initialTicketBookings,
-  initialHotelBookings,
-  initialUmrahPackages,
-  initialVisaApplications,
-  initialRefunds,
-  initialADMs,
-  initialVouchers,
-  initialBSPSettlements,
-  initialJournalEntries,
-  initialExchangeRates
+  initialParties,
+  initialSalesInvoices,
+  initialSupplierBills,
+  initialVouchers
 } from '../data/mockData';
 
 interface Toast {
@@ -39,632 +23,509 @@ interface Toast {
 }
 
 interface AccountingContextType {
-  // State
   accounts: Account[];
-  customers: Customer[];
-  vendors: VendorSupplier[];
-  tickets: TicketBooking[];
-  hotels: HotelBooking[];
-  umrahPackages: UmrahPackage[];
-  visas: VisaApplication[];
-  refunds: RefundRecord[];
-  adms: ADMRecord[];
+  parties: Party[];
+  salesInvoices: SaleInvoice[];
+  supplierBills: SupplierBill[];
   vouchers: Voucher[];
-  bspSettlements: BSPSettlement[];
-  journalEntries: JournalEntry[];
-  activeCurrency: CurrencyCode;
-  exchangeRates: ExchangeRate[];
+  
+  activeCurrency: string;
+  currencySymbol: string;
+  setActiveCurrency: (curr: string) => void;
+  formatMoney: (amount: number) => string;
+  
   isOperating: boolean;
   operationStatusText: string;
   operationProgress: number;
   toasts: Toast[];
-
-  // Actions
-  setActiveCurrency: (code: CurrencyCode) => void;
-  formatCurrency: (amount: number, targetCurrency?: CurrencyCode) => string;
-  convertAmount: (amount: number, targetCurrency?: CurrencyCode) => number;
   showToast: (title: string, message: string, type?: Toast['type']) => void;
   dismissToast: (id: string) => void;
+
+  // Real Accounting Actions
+  addSaleInvoice: (invoice: Omit<SaleInvoice, 'id' | 'invoiceNumber' | 'totalCost' | 'totalSale' | 'totalProfit' | 'balanceDue' | 'status'>) => Promise<SaleInvoice>;
+  addSupplierBill: (bill: Omit<SupplierBill, 'id' | 'billNumber' | 'balanceDue' | 'status'>) => Promise<SupplierBill>;
+  addVoucher: (voucher: Omit<Voucher, 'id' | 'voucherNumber'>) => Promise<Voucher>;
+  addParty: (party: Omit<Party, 'id' | 'currentBalance'>) => void;
+  addAccount: (account: Omit<Account, 'id' | 'balance'>) => void;
   
-  // Business Operations
-  issueTicket: (ticketData: Omit<TicketBooking, 'id' | 'grossFare' | 'netCostToAirline' | 'clientSellingPrice' | 'airlineCommissionAmount'>) => Promise<TicketBooking>;
-  processRefund: (refundData: Omit<RefundRecord, 'id' | 'refundNumber' | 'status'>) => Promise<RefundRecord>;
-  createVoucher: (voucherData: Omit<Voucher, 'id' | 'voucherNumber'>) => Promise<Voucher>;
-  addHotelBooking: (hotelData: Omit<HotelBooking, 'id' | 'voucherNo' | 'profitMargin'>) => Promise<HotelBooking>;
-  addVisaApplication: (visaData: Omit<VisaApplication, 'id' | 'refNumber' | 'totalSellingPrice'>) => Promise<VisaApplication>;
-  addCustomer: (customerData: Omit<Customer, 'id' | 'currentBalance'>) => void;
-  addVendor: (vendorData: Omit<VendorSupplier, 'id' | 'balance'>) => void;
-  reconcileBSPCycle: (periodId: string) => Promise<void>;
-  postDirectJournalEntry: (entry: Omit<JournalEntry, 'id' | 'entryNumber' | 'createdAt'>) => boolean;
-  resetToDefaults: () => void;
+  // Ledger generation helpers
+  getPartyLedger: (partyId: string, fromDate?: string, toDate?: string) => LedgerTransaction[];
+  getAccountLedger: (accountId: string, fromDate?: string, toDate?: string) => LedgerTransaction[];
+  getDayBook: (date: string) => Array<{ time: string; voucherNo: string; type: string; narration: string; debit: number; credit: number }>;
+  
+  // Data maintenance
+  resetToSampleData: () => void;
+  exportDatabaseJSON: () => void;
+  importDatabaseJSON: (jsonStr: string) => boolean;
 }
 
 const AccountingContext = createContext<AccountingContextType | undefined>(undefined);
 
 export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load state with local storage fallback
   const [accounts, setAccounts] = useState<Account[]>(() => {
-    const saved = localStorage.getItem('vl_accounts');
+    const saved = localStorage.getItem('ta_accounts');
     return saved ? JSON.parse(saved) : initialChartOfAccounts;
   });
 
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('vl_customers');
-    return saved ? JSON.parse(saved) : initialCustomers;
+  const [parties, setParties] = useState<Party[]>(() => {
+    const saved = localStorage.getItem('ta_parties');
+    return saved ? JSON.parse(saved) : initialParties;
   });
 
-  const [vendors, setVendors] = useState<VendorSupplier[]>(() => {
-    const saved = localStorage.getItem('vl_vendors');
-    return saved ? JSON.parse(saved) : initialVendors;
+  const [salesInvoices, setSalesInvoices] = useState<SaleInvoice[]>(() => {
+    const saved = localStorage.getItem('ta_invoices');
+    return saved ? JSON.parse(saved) : initialSalesInvoices;
   });
 
-  const [tickets, setTickets] = useState<TicketBooking[]>(() => {
-    const saved = localStorage.getItem('vl_tickets');
-    return saved ? JSON.parse(saved) : initialTicketBookings;
-  });
-
-  const [hotels, setHotels] = useState<HotelBooking[]>(() => {
-    const saved = localStorage.getItem('vl_hotels');
-    return saved ? JSON.parse(saved) : initialHotelBookings;
-  });
-
-  const [umrahPackages, setUmrahPackages] = useState<UmrahPackage[]>(() => {
-    const saved = localStorage.getItem('vl_umrah');
-    return saved ? JSON.parse(saved) : initialUmrahPackages;
-  });
-
-  const [visas, setVisas] = useState<VisaApplication[]>(() => {
-    const saved = localStorage.getItem('vl_visas');
-    return saved ? JSON.parse(saved) : initialVisaApplications;
-  });
-
-  const [refunds, setRefunds] = useState<RefundRecord[]>(() => {
-    const saved = localStorage.getItem('vl_refunds');
-    return saved ? JSON.parse(saved) : initialRefunds;
-  });
-
-  const [adms, setAdms] = useState<ADMRecord[]>(() => {
-    const saved = localStorage.getItem('vl_adms');
-    return saved ? JSON.parse(saved) : initialADMs;
+  const [supplierBills, setSupplierBills] = useState<SupplierBill[]>(() => {
+    const saved = localStorage.getItem('ta_bills');
+    return saved ? JSON.parse(saved) : initialSupplierBills;
   });
 
   const [vouchers, setVouchers] = useState<Voucher[]>(() => {
-    const saved = localStorage.getItem('vl_vouchers');
+    const saved = localStorage.getItem('ta_vouchers');
     return saved ? JSON.parse(saved) : initialVouchers;
   });
 
-  const [bspSettlements, setBspSettlements] = useState<BSPSettlement[]>(() => {
-    const saved = localStorage.getItem('vl_bsp');
-    return saved ? JSON.parse(saved) : initialBSPSettlements;
-  });
+  const [activeCurrency, setActiveCurrency] = useState<string>('PKR');
+  const currencySymbol = activeCurrency === 'USD' ? '$' : activeCurrency === 'SAR' ? '﷼' : activeCurrency === 'AED' ? 'AED' : 'Rs';
 
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(() => {
-    const saved = localStorage.getItem('vl_journals');
-    return saved ? JSON.parse(saved) : initialJournalEntries;
-  });
-
-  const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>('USD');
-  const [exchangeRates] = useState<ExchangeRate[]>(initialExchangeRates);
-
-  // Animated creamy loading bar state
-  const [isOperating, setIsOperating] = useState<boolean>(false);
-  const [operationStatusText, setOperationStatusText] = useState<string>('');
-  const [operationProgress, setOperationProgress] = useState<number>(0);
-
-  // Toasts
+  // Creamy loading bar & toasts
+  const [isOperating, setIsOperating] = useState(false);
+  const [operationStatusText, setOperationStatusText] = useState('');
+  const [operationProgress, setOperationProgress] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Sync to local storage
   useEffect(() => {
-    localStorage.setItem('vl_accounts', JSON.stringify(accounts));
-    localStorage.setItem('vl_customers', JSON.stringify(customers));
-    localStorage.setItem('vl_vendors', JSON.stringify(vendors));
-    localStorage.setItem('vl_tickets', JSON.stringify(tickets));
-    localStorage.setItem('vl_hotels', JSON.stringify(hotels));
-    localStorage.setItem('vl_umrah', JSON.stringify(umrahPackages));
-    localStorage.setItem('vl_visas', JSON.stringify(visas));
-    localStorage.setItem('vl_refunds', JSON.stringify(refunds));
-    localStorage.setItem('vl_adms', JSON.stringify(adms));
-    localStorage.setItem('vl_vouchers', JSON.stringify(vouchers));
-    localStorage.setItem('vl_bsp', JSON.stringify(bspSettlements));
-    localStorage.setItem('vl_journals', JSON.stringify(journalEntries));
-  }, [accounts, customers, vendors, tickets, hotels, umrahPackages, visas, refunds, adms, vouchers, bspSettlements, journalEntries]);
+    localStorage.setItem('ta_accounts', JSON.stringify(accounts));
+    localStorage.setItem('ta_parties', JSON.stringify(parties));
+    localStorage.setItem('ta_invoices', JSON.stringify(salesInvoices));
+    localStorage.setItem('ta_bills', JSON.stringify(supplierBills));
+    localStorage.setItem('ta_vouchers', JSON.stringify(vouchers));
+  }, [accounts, parties, salesInvoices, supplierBills, vouchers]);
 
   const showToast = (title: string, message: string, type: Toast['type'] = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => {
-      dismissToast(id);
-    }, 4500);
+    setTimeout(() => dismissToast(id), 4000);
   };
 
   const dismissToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Currency helper
-  const convertAmount = (amountUSD: number, targetCurrency: CurrencyCode = activeCurrency): number => {
-    const rateObj = exchangeRates.find(r => r.code === targetCurrency);
-    const rate = rateObj ? rateObj.rateToBase : 1;
-    return amountUSD * rate;
+  const formatMoney = (amount: number): string => {
+    return `${currencySymbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
-  const formatCurrency = (amountUSD: number, targetCurrency: CurrencyCode = activeCurrency): string => {
-    const rateObj = exchangeRates.find(r => r.code === targetCurrency) || exchangeRates[0];
-    const converted = amountUSD * rateObj.rateToBase;
-    return `${rateObj.symbol} ${converted.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
-  };
-
-  // Simulate Creamy Loading Progress
-  const runSimulatedProgress = async (text: string, durationMs: number = 700): Promise<void> => {
+  const runSimulatedProgress = async (text: string, durationMs: number = 600): Promise<void> => {
     setIsOperating(true);
     setOperationStatusText(text);
-    setOperationProgress(15);
-    
-    await new Promise(r => setTimeout(r, durationMs * 0.3));
-    setOperationProgress(55);
-    
+    setOperationProgress(25);
     await new Promise(r => setTimeout(r, durationMs * 0.4));
-    setOperationProgress(90);
-    
-    await new Promise(r => setTimeout(r, durationMs * 0.3));
+    setOperationProgress(75);
+    await new Promise(r => setTimeout(r, durationMs * 0.4));
     setOperationProgress(100);
-    
     setTimeout(() => {
       setIsOperating(false);
       setOperationProgress(0);
       setOperationStatusText('');
-    }, 250);
+    }, 200);
   };
 
-  // Issue Air Ticket with automatic double-entry journal entry
-  const issueTicket = async (data: Omit<TicketBooking, 'id' | 'grossFare' | 'netCostToAirline' | 'clientSellingPrice' | 'airlineCommissionAmount'>): Promise<TicketBooking> => {
-    await runSimulatedProgress(`Issuing e-ticket ${data.ticketNumber} & posting to General Ledger...`, 800);
+  // Add Sale Invoice (Air Ticket, Hotel, Umrah, Visa)
+  const addSaleInvoice = async (data: Omit<SaleInvoice, 'id' | 'invoiceNumber' | 'totalCost' | 'totalSale' | 'totalProfit' | 'balanceDue' | 'status'>): Promise<SaleInvoice> => {
+    await runSimulatedProgress('Posting Travel Sales Invoice & Updating General Ledgers...', 650);
 
-    const commAmount = (data.baseFare * data.airlineCommissionPercent) / 100;
-    const grossFare = data.baseFare + data.taxes;
-    const netCostToAirline = grossFare - commAmount;
-    const clientSellingPrice = grossFare + data.markupAmount - data.discount;
+    const totalSale = data.items.reduce((acc, it) => acc + it.salePrice, 0);
+    const totalCost = data.items.reduce((acc, it) => acc + it.costPrice, 0);
+    const totalProfit = totalSale - totalCost;
+    const balanceDue = Math.max(0, totalSale - data.paidAmount);
+    const status: SaleInvoice['status'] = balanceDue <= 0 ? 'PAID' : data.paidAmount > 0 ? 'PARTIAL' : 'UNPAID';
 
-    const newTicket: TicketBooking = {
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const newInvoice: SaleInvoice = {
       ...data,
-      id: `tkt-${Date.now()}`,
-      grossFare,
-      airlineCommissionAmount: commAmount,
-      netCostToAirline,
-      clientSellingPrice,
-      status: 'ISSUED',
-      paymentStatus: data.paidAmount >= clientSellingPrice ? 'PAID' : data.paidAmount > 0 ? 'PARTIAL' : 'UNPAID',
+      id: `inv-${Date.now()}`,
+      invoiceNumber,
+      totalSale,
+      totalCost,
+      totalProfit,
+      balanceDue,
+      status
     };
 
-    // Auto-create Double-Entry Journal Entry
-    const entryId = `je-${Date.now()}`;
-    const entryNumber = `JE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setSalesInvoices(prev => [newInvoice, ...prev]);
 
-    const journalLines = [
-      // 1. Debit Accounts Receivable (Customer owes total selling price)
-      {
-        accountId: 'acc-1100',
-        accountCode: '1100',
-        accountName: 'Accounts Receivable - Corporate Clients',
-        debit: clientSellingPrice,
-        credit: 0,
-        description: `Receivable from ${data.customerName} for PNR ${data.pnr}`
-      },
-      // 2. Credit Accounts Payable (Net cost owed to Airline / BSP)
-      {
-        accountId: 'acc-2010',
-        accountCode: '2010',
-        accountName: 'Accounts Payable - IATA BSP Airlines',
-        debit: 0,
-        credit: netCostToAirline,
-        description: `Payable to ${data.airlineName} (Net of Comm)`
-      },
-      // 3. Credit Airline Commission Revenue
-      {
-        accountId: 'acc-4010',
-        accountCode: '4010',
-        accountName: 'Airline Standard Commission Income',
-        debit: 0,
-        credit: commAmount,
-        description: `${data.airlineCommissionPercent}% Commission earned`
-      },
-      // 4. Credit Markup / Agency Fee
-      ...(data.markupAmount > 0 ? [{
-        accountId: 'acc-4030',
-        accountCode: '4030',
-        accountName: 'Ticket Agency Service Fee & Markup',
-        debit: 0,
-        credit: data.markupAmount,
-        description: `Agency service markup for ${data.passengerName}`
-      }] : [])
-    ];
-
-    const totalDebit = clientSellingPrice;
-    const totalCredit = netCostToAirline + commAmount + (data.markupAmount || 0);
-
-    const newJournalEntry: JournalEntry = {
-      id: entryId,
-      entryNumber,
-      date: data.issueDate,
-      voucherType: 'TICKET_ISSUE',
-      referenceNo: `TKT-${data.ticketNumber}`,
-      description: `Issued e-ticket for ${data.passengerName} (PNR: ${data.pnr}, Route: ${data.sector})`,
-      lines: journalLines,
-      totalDebit,
-      totalCredit,
-      createdAt: new Date().toISOString()
-    };
-
-    // Update balances
-    setTickets(prev => [newTicket, ...prev]);
-    setJournalEntries(prev => [newJournalEntry, ...prev]);
-
-    // Update customer balance if unpaid
-    const unpaidAmount = clientSellingPrice - (data.paidAmount || 0);
-    if (unpaidAmount > 0) {
-      setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, currentBalance: c.currentBalance + unpaidAmount } : c));
+    // Update Customer Balance (Receivable increased by balanceDue)
+    if (balanceDue > 0) {
+      setParties(prev => prev.map(p => p.id === data.customerId ? { ...p, currentBalance: p.currentBalance + balanceDue } : p));
     }
 
-    // Update vendor payable
-    setVendors(prev => prev.map(v => v.id === data.vendorId ? { ...v, balance: v.balance + netCostToAirline } : v));
+    // Update Suppliers Payables (Cost owed to suppliers)
+    data.items.forEach(item => {
+      if (item.supplierId && item.costPrice > 0) {
+        setParties(prev => prev.map(p => p.id === item.supplierId ? { ...p, currentBalance: p.currentBalance + item.costPrice } : p));
+      }
+    });
 
-    // Update account balances
+    // Update Account Balances
     setAccounts(prev => prev.map(acc => {
-      if (acc.code === '1100') return { ...acc, balance: acc.balance + unpaidAmount };
-      if (acc.code === '2010') return { ...acc, balance: acc.balance + netCostToAirline };
-      if (acc.code === '4010') return { ...acc, balance: acc.balance + commAmount };
-      if (acc.code === '4030') return { ...acc, balance: acc.balance + data.markupAmount };
+      if (acc.code === '1100') return { ...acc, balance: acc.balance + balanceDue }; // Receivables
+      if (acc.code === '2010') return { ...acc, balance: acc.balance + totalCost }; // Payables
+      if (acc.code === '4010') return { ...acc, balance: acc.balance + totalProfit }; // Revenue / Profit
+      if (data.paidAmount > 0 && acc.id === (data.depositAccountId || 'acc-1010')) {
+        return { ...acc, balance: acc.balance + data.paidAmount };
+      }
       return acc;
     }));
 
-    showToast('Ticket Issued & Posted!', `PNR ${data.pnr} issued for ${data.passengerName}. Double-entry journal ${entryNumber} recorded.`);
-    return newTicket;
+    showToast('Sales Invoice Created', `Invoice ${invoiceNumber} created. Customer ledger and supplier accounts updated.`);
+    return newInvoice;
   };
 
-  // Process Ticket Refund
-  const processRefund = async (data: Omit<RefundRecord, 'id' | 'refundNumber' | 'status'>): Promise<RefundRecord> => {
-    await runSimulatedProgress(`Calculating ticket refund & creating Credit Adjustment...`, 700);
+  // Add Supplier Bill (BSP Statement / Consolidator Bill)
+  const addSupplierBill = async (data: Omit<SupplierBill, 'id' | 'billNumber' | 'balanceDue' | 'status'>): Promise<SupplierBill> => {
+    await runSimulatedProgress(`Logging Supplier Bill for ${data.supplierName}...`, 500);
 
-    const refundId = `ref-${Date.now()}`;
-    const refundNumber = `RFND-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-
-    const newRefund: RefundRecord = {
+    const balanceDue = Math.max(0, data.amount - data.paidAmount);
+    const billNumber = `BILL-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const newBill: SupplierBill = {
       ...data,
-      id: refundId,
-      refundNumber,
-      status: 'PROCESSED'
+      id: `bill-${Date.now()}`,
+      billNumber,
+      balanceDue,
+      status: balanceDue <= 0 ? 'PAID' : data.paidAmount > 0 ? 'PARTIAL' : 'UNPAID'
     };
 
-    // Update ticket status
-    setTickets(prev => prev.map(t => t.ticketNumber === data.ticketNumber ? { ...t, status: 'REFUNDED' } : t));
-    setRefunds(prev => [newRefund, ...prev]);
+    setSupplierBills(prev => [newBill, ...prev]);
 
-    // Auto-journal for refund
-    const entryNumber = `JE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newJournal: JournalEntry = {
-      id: `je-${Date.now()}`,
-      entryNumber,
-      date: data.refundDate,
-      voucherType: 'REFUND',
-      referenceNo: refundNumber,
-      description: `Refund processed for Ticket ${data.ticketNumber} (${data.passengerName})`,
-      totalDebit: data.originalGrossFare,
-      totalCredit: data.originalGrossFare,
-      createdAt: new Date().toISOString(),
-      lines: [
-        {
-          accountId: 'acc-2010',
-          accountCode: '2010',
-          accountName: 'Accounts Payable - IATA BSP Airlines',
-          debit: data.originalGrossFare - data.airlineCancellationPenalty,
-          credit: 0,
-          description: `Airline ACM credit receivable for ticket ${data.ticketNumber}`
-        },
-        {
-          accountId: 'acc-1100',
-          accountCode: '1100',
-          accountName: 'Accounts Receivable - Corporate Clients',
-          debit: 0,
-          credit: data.netCustomerRefund,
-          description: `Customer refund credit credited to ${data.customerName}`
-        },
-        {
-          accountId: 'acc-4080',
-          accountCode: '4080',
-          accountName: 'Ticket Refund Processing Service Fee',
-          debit: 0,
-          credit: data.agencyRefundServiceFee,
-          description: `Agency refund processing income`
-        }
-      ]
-    };
+    // Update Supplier Balance (We owe supplier more)
+    setParties(prev => prev.map(p => p.id === data.supplierId ? { ...p, currentBalance: p.currentBalance + balanceDue } : p));
+    
+    // Update Accounts Payable GL
+    setAccounts(prev => prev.map(a => a.code === '2010' ? { ...a, balance: a.balance + balanceDue } : a));
 
-    setJournalEntries(prev => [newJournal, ...prev]);
-
-    // Adjust customer and vendor balances
-    setCustomers(prev => prev.map(c => c.id === data.customerId ? { ...c, currentBalance: Math.max(0, c.currentBalance - data.netCustomerRefund) } : c));
-    setVendors(prev => prev.map(v => v.code.includes('BSP') ? { ...v, balance: Math.max(0, v.balance - (data.originalGrossFare - data.airlineCancellationPenalty)) } : v));
-
-    showToast('Refund Processed', `Refund ${refundNumber} of ${formatCurrency(data.netCustomerRefund)} processed successfully.`);
-    return newRefund;
+    showToast('Supplier Bill Logged', `Bill ${billNumber} recorded for ${data.supplierName}.`);
+    return newBill;
   };
 
-  // Create Voucher (Receipt, Payment, Journal)
-  const createVoucher = async (data: Omit<Voucher, 'id' | 'voucherNumber'>): Promise<Voucher> => {
-    await runSimulatedProgress(`Posting ${data.type} Voucher ${data.referenceNo}...`, 600);
+  // Add Voucher (RV, PV, JV, CN, DN)
+  const addVoucher = async (data: Omit<Voucher, 'id' | 'voucherNumber'>): Promise<Voucher> => {
+    await runSimulatedProgress(`Posting ${data.type} Voucher...`, 550);
 
-    const id = `vch-${Date.now()}`;
     const voucherNumber = `${data.type}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-
     const newVoucher: Voucher = {
       ...data,
-      id,
-      voucherNumber,
-      status: 'POSTED'
+      id: `vch-${Date.now()}`,
+      voucherNumber
     };
 
     setVouchers(prev => [newVoucher, ...prev]);
 
-    // Post to accounting journal
-    const entryNumber = `JE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const bankOrCashAccId = data.paymentMethod === 'Cash' ? 'acc-1010' : (data.bankAccount || 'acc-1030');
-    const bankOrCashAcc = accounts.find(a => a.id === bankOrCashAccId) || accounts[2];
-
-    let lines = [];
-    if (data.type === 'RV') {
-      // Customer payment received: Dr Cash/Bank, Cr Accounts Receivable
-      lines = [
-        {
-          accountId: bankOrCashAcc.id,
-          accountCode: bankOrCashAcc.code,
-          accountName: bankOrCashAcc.name,
-          debit: data.amount,
-          credit: 0,
-          description: `Funds received via ${data.paymentMethod} (Ref: ${data.referenceNo})`
-        },
-        {
-          accountId: 'acc-1100',
-          accountCode: '1100',
-          accountName: 'Accounts Receivable - Corporate Clients',
-          debit: 0,
-          credit: data.amount,
-          description: `Payment from ${data.partyName}`
-        }
-      ];
-      // Reduce customer balance
-      setCustomers(prev => prev.map(c => c.id === data.partyId ? { ...c, currentBalance: c.currentBalance - data.amount } : c));
-      // Increase bank balance
-      setAccounts(prev => prev.map(a => a.id === bankOrCashAcc.id ? { ...a, balance: a.balance + data.amount } : a));
-    } else if (data.type === 'PV') {
-      // Payment to Vendor: Dr Accounts Payable, Cr Cash/Bank
-      lines = [
-        {
-          accountId: 'acc-2010',
-          accountCode: '2010',
-          accountName: 'Accounts Payable - IATA BSP Airlines',
-          debit: data.amount,
-          credit: 0,
-          description: `Settlement to ${data.partyName}`
-        },
-        {
-          accountId: bankOrCashAcc.id,
-          accountCode: bankOrCashAcc.code,
-          accountName: bankOrCashAcc.name,
-          debit: 0,
-          credit: data.amount,
-          description: `Payment released via ${data.paymentMethod}`
-        }
-      ];
-      // Reduce vendor balance
-      setVendors(prev => prev.map(v => v.id === data.partyId ? { ...v, balance: v.balance - data.amount } : v));
-      // Decrease bank balance
-      setAccounts(prev => prev.map(a => a.id === bankOrCashAcc.id ? { ...a, balance: a.balance - data.amount } : a));
-    } else {
-      lines = [
-        {
-          accountId: 'acc-6030',
-          accountCode: '6030',
-          accountName: 'Office Rent & Commercial Utilities',
-          debit: data.amount,
-          credit: 0,
-          description: data.narration
-        },
-        {
-          accountId: bankOrCashAcc.id,
-          accountCode: bankOrCashAcc.code,
-          accountName: bankOrCashAcc.name,
-          debit: 0,
-          credit: data.amount,
-          description: `Voucher settlement`
-        }
-      ];
+    // 1. If RV (Receipt from Client): reduce Customer's receivable balance
+    if (data.type === 'RV' && data.partyId) {
+      setParties(prev => prev.map(p => p.id === data.partyId ? { ...p, currentBalance: Math.max(0, p.currentBalance - data.amount) } : p));
     }
 
-    const journal: JournalEntry = {
-      id: `je-${Date.now()}`,
-      entryNumber,
-      date: data.date,
-      voucherType: data.type === 'RV' ? 'RECEIPT' : data.type === 'PV' ? 'PAYMENT' : 'JOURNAL',
-      referenceNo: voucherNumber,
-      description: data.narration || `${data.type} for ${data.partyName}`,
-      totalDebit: data.amount,
-      totalCredit: data.amount,
-      createdAt: new Date().toISOString(),
-      lines
-    };
+    // 2. If PV (Payment to Supplier): reduce Supplier's payable balance
+    if (data.type === 'PV' && data.partyId) {
+      setParties(prev => prev.map(p => p.id === data.partyId ? { ...p, currentBalance: Math.max(0, p.currentBalance - data.amount) } : p));
+    }
 
-    setJournalEntries(prev => [journal, ...prev]);
-    showToast(`Voucher ${voucherNumber} Created`, `${data.type} posted for ${formatCurrency(data.amount)}.`);
+    // 3. Update Chart of Accounts balances (Debit increases Debit accounts, Credit increases Credit accounts)
+    setAccounts(prev => prev.map(acc => {
+      let b = acc.balance;
+      // Debit leg
+      if (acc.id === data.debitAccountId) {
+        if (acc.category === 'ASSET' || acc.category === 'EXPENSE') b += data.amount;
+        else b -= data.amount;
+      }
+      // Credit leg
+      if (acc.id === data.creditAccountId) {
+        if (acc.category === 'LIABILITY' || acc.category === 'INCOME' || acc.category === 'EQUITY') b += data.amount;
+        else b -= data.amount;
+      }
+      return { ...acc, balance: b };
+    }));
+
+    showToast('Voucher Posted', `${data.type} Voucher ${voucherNumber} of ${formatMoney(data.amount)} posted to general ledger.`);
     return newVoucher;
   };
 
-  // Add Hotel Booking
-  const addHotelBooking = async (data: Omit<HotelBooking, 'id' | 'voucherNo' | 'profitMargin'>): Promise<HotelBooking> => {
-    await runSimulatedProgress(`Generating Hotel Voucher for ${data.hotelName}...`, 600);
-    const voucherNo = `HTL-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-    const profitMargin = data.sellingPrice - data.buyingCost;
-
-    const newBooking: HotelBooking = {
+  const addParty = (data: Omit<Party, 'id' | 'currentBalance'>) => {
+    const newParty: Party = {
       ...data,
-      id: `htl-${Date.now()}`,
-      voucherNo,
-      profitMargin
+      id: `pty-${Date.now()}`,
+      currentBalance: data.openingBalance || 0
     };
-
-    setHotels(prev => [newBooking, ...prev]);
-
-    // Update account balances: Dr Client Receivable, Cr Hotel Vendor, Cr Hotel Commission Revenue
-    setAccounts(prev => prev.map(a => {
-      if (a.code === '1100') return { ...a, balance: a.balance + data.sellingPrice };
-      if (a.code === '2040') return { ...a, balance: a.balance + data.buyingCost };
-      if (a.code === '4040') return { ...a, balance: a.balance + profitMargin };
-      return a;
-    }));
-
-    showToast('Hotel Voucher Issued', `${data.hotelName} booked for ${data.guestName} (${voucherNo}).`);
-    return newBooking;
+    setParties(prev => [...prev, newParty]);
+    showToast(`${data.type === 'CUSTOMER' ? 'Client' : 'Supplier'} Created`, `${data.name} added to khata list.`);
   };
 
-  // Add Visa Application
-  const addVisaApplication = async (data: Omit<VisaApplication, 'id' | 'refNumber' | 'totalSellingPrice'>): Promise<VisaApplication> => {
-    await runSimulatedProgress(`Submitting Visa Application for ${data.applicantName}...`, 600);
-    const refNumber = `VSA-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-    const totalSellingPrice = data.embassyFee + data.serviceCharge;
-
-    const newVisa: VisaApplication = {
+  const addAccount = (data: Omit<Account, 'id' | 'balance'>) => {
+    const newAccount: Account = {
       ...data,
-      id: `visa-${Date.now()}`,
-      refNumber,
-      totalSellingPrice
-    };
-
-    setVisas(prev => [newVisa, ...prev]);
-
-    setAccounts(prev => prev.map(a => {
-      if (a.code === '1100') return { ...a, balance: a.balance + totalSellingPrice };
-      if (a.code === '2050') return { ...a, balance: a.balance + data.embassyFee };
-      if (a.code === '4060') return { ...a, balance: a.balance + data.serviceCharge };
-      return a;
-    }));
-
-    showToast('Visa Application Logged', `${data.destinationCountry} visa for ${data.applicantName} logged (${refNumber}).`);
-    return newVisa;
-  };
-
-  const addCustomer = (data: Omit<Customer, 'id' | 'currentBalance'>) => {
-    const newCustomer: Customer = {
-      ...data,
-      id: `cust-${Date.now()}`,
-      currentBalance: 0
-    };
-    setCustomers(prev => [...prev, newCustomer]);
-    showToast('Customer Added', `${data.name} profile created.`);
-  };
-
-  const addVendor = (data: Omit<VendorSupplier, 'id' | 'balance'>) => {
-    const newVendor: VendorSupplier = {
-      ...data,
-      id: `vend-${Date.now()}`,
+      id: `acc-${Date.now()}`,
       balance: 0
     };
-    setVendors(prev => [...prev, newVendor]);
-    showToast('Supplier Added', `${data.name} supplier created.`);
+    setAccounts(prev => [...prev, newAccount]);
+    showToast('Account Added', `${data.code} - ${data.name} created in Chart of Accounts.`);
   };
 
-  // Reconcile BSP Settlement Period
-  const reconcileBSPCycle = async (periodId: string) => {
-    await runSimulatedProgress('Importing GDS Billing Data & Reconciling BSP Fortnight...', 1200);
+  // Generate Party Ledger (Khata / Statement of Accounts)
+  const getPartyLedger = (partyId: string, fromDate?: string, toDate?: string): LedgerTransaction[] => {
+    const party = parties.find(p => p.id === partyId);
+    if (!party) return [];
 
-    setBspSettlements(prev => prev.map(b => {
-      if (b.id === periodId) {
-        return {
-          ...b,
-          status: 'RECONCILED'
-        };
+    const isCustomer = party.type === 'CUSTOMER';
+    const txs: Array<{
+      date: string;
+      voucherNo: string;
+      type: string;
+      particulars: string;
+      debit: number;
+      credit: number;
+    }> = [];
+
+    // 1. Sales Invoices
+    salesInvoices.filter(inv => inv.customerId === partyId).forEach(inv => {
+      txs.push({
+        date: inv.date,
+        voucherNo: inv.invoiceNumber,
+        type: 'SALE_INVOICE',
+        particulars: inv.items.map(i => `${i.serviceType}: ${i.passengerName || i.description} (${i.sector || ''})`).join(' | '),
+        debit: inv.totalSale,
+        credit: 0
+      });
+      // If invoice had downpayment
+      if (inv.paidAmount > 0) {
+        txs.push({
+          date: inv.date,
+          voucherNo: `RCPT-${inv.invoiceNumber}`,
+          type: 'PAYMENT_RECEIVED',
+          particulars: `Advance / Part payment against ${inv.invoiceNumber}`,
+          debit: 0,
+          credit: inv.paidAmount
+        });
       }
-      return b;
+    });
+
+    // 2. Supplier Bills (If supplier)
+    supplierBills.filter(b => b.supplierId === partyId).forEach(b => {
+      txs.push({
+        date: b.date,
+        voucherNo: b.billNumber,
+        type: 'SUPPLIER_BILL',
+        particulars: b.description,
+        debit: 0,
+        credit: b.amount // We owe supplier credit
+      });
+    });
+
+    // 3. Vouchers (RV, PV, JV, CN, DN)
+    vouchers.filter(v => v.partyId === partyId).forEach(v => {
+      if (isCustomer) {
+        if (v.type === 'RV') {
+          txs.push({
+            date: v.date,
+            voucherNo: v.voucherNumber,
+            type: 'RECEIPT_VOUCHER',
+            particulars: `${v.narration} (${v.paymentMethod} ${v.chequeOrRefNo ? 'Ref: ' + v.chequeOrRefNo : ''})`,
+            debit: 0,
+            credit: v.amount
+          });
+        } else if (v.type === 'CN') {
+          txs.push({
+            date: v.date,
+            voucherNo: v.voucherNumber,
+            type: 'CREDIT_NOTE',
+            particulars: `Credit Note / Refund / Discount: ${v.narration}`,
+            debit: 0,
+            credit: v.amount
+          });
+        }
+      } else {
+        // Supplier
+        if (v.type === 'PV') {
+          txs.push({
+            date: v.date,
+            voucherNo: v.voucherNumber,
+            type: 'PAYMENT_VOUCHER',
+            particulars: `${v.narration} (${v.paymentMethod} ${v.chequeOrRefNo ? 'Ref: ' + v.chequeOrRefNo : ''})`,
+            debit: v.amount, // Dr Supplier decreases payable
+            credit: 0
+          });
+        }
+      }
+    });
+
+    // Sort chronologically
+    txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Filter by dates if specified
+    const filteredTxs = txs.filter(t => {
+      if (fromDate && t.date < fromDate) return false;
+      if (toDate && t.date > toDate) return false;
+      return true;
+    });
+
+    let runningBal = party.openingBalance || 0;
+    return filteredTxs.map((t, idx) => {
+      if (isCustomer) {
+        runningBal += (t.debit - t.credit);
+      } else {
+        runningBal += (t.credit - t.debit);
+      }
+      return {
+        id: `tx-${idx}`,
+        ...t,
+        runningBalance: runningBal
+      };
+    });
+  };
+
+  // Generate General Ledger for any Account
+  const getAccountLedger = (accountId: string, fromDate?: string, toDate?: string): LedgerTransaction[] => {
+    const acc = accounts.find(a => a.id === accountId);
+    if (!acc) return [];
+
+    const txs: Array<{
+      date: string;
+      voucherNo: string;
+      type: string;
+      particulars: string;
+      debit: number;
+      credit: number;
+    }> = [];
+
+    vouchers.forEach(v => {
+      if (v.debitAccountId === accountId) {
+        txs.push({
+          date: v.date,
+          voucherNo: v.voucherNumber,
+          type: v.type,
+          particulars: `${v.narration} (Cr. ${v.creditAccountName})`,
+          debit: v.amount,
+          credit: 0
+        });
+      }
+      if (v.creditAccountId === accountId) {
+        txs.push({
+          date: v.date,
+          voucherNo: v.voucherNumber,
+          type: v.type,
+          particulars: `${v.narration} (Dr. ${v.debitAccountName})`,
+          debit: 0,
+          credit: v.amount
+        });
+      }
+    });
+
+    txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let bal = 0;
+    return txs.map((t, idx) => {
+      if (acc.category === 'ASSET' || acc.category === 'EXPENSE') {
+        bal += (t.debit - t.credit);
+      } else {
+        bal += (t.credit - t.debit);
+      }
+      return { id: `acc-tx-${idx}`, ...t, runningBalance: bal };
+    });
+  };
+
+  // Day Book helper
+  const getDayBook = (date: string) => {
+    const dayVouchers = vouchers.filter(v => v.date === date);
+    return dayVouchers.map(v => ({
+      time: '12:00 PM',
+      voucherNo: v.voucherNumber,
+      type: v.type,
+      narration: v.narration || `${v.debitAccountName} / ${v.creditAccountName}`,
+      debit: v.amount,
+      credit: v.amount
     }));
-
-    showToast('BSP Billing Reconciled', 'IATA billing feed matched with zero unmatched variance.');
   };
 
-  // Manual General Journal Voucher
-  const postDirectJournalEntry = (entry: Omit<JournalEntry, 'id' | 'entryNumber' | 'createdAt'>): boolean => {
-    if (Math.abs(entry.totalDebit - entry.totalCredit) > 0.01) {
-      showToast('Validation Error', 'Debit and Credit totals must be exactly equal.', 'error');
-      return false;
-    }
-
-    const entryNumber = `JE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newEntry: JournalEntry = {
-      ...entry,
-      id: `je-${Date.now()}`,
-      entryNumber,
-      createdAt: new Date().toISOString()
-    };
-
-    setJournalEntries(prev => [newEntry, ...prev]);
-    showToast('Journal Entry Posted', `Journal voucher ${entryNumber} posted to General Ledger.`);
-    return true;
-  };
-
-  const resetToDefaults = () => {
+  const resetToSampleData = () => {
     localStorage.clear();
     setAccounts(initialChartOfAccounts);
-    setCustomers(initialCustomers);
-    setVendors(initialVendors);
-    setTickets(initialTicketBookings);
-    setHotels(initialHotelBookings);
-    setUmrahPackages(initialUmrahPackages);
-    setVisas(initialVisaApplications);
-    setRefunds(initialRefunds);
-    setAdms(initialADMs);
+    setParties(initialParties);
+    setSalesInvoices(initialSalesInvoices);
+    setSupplierBills(initialSupplierBills);
     setVouchers(initialVouchers);
-    setBspSettlements(initialBSPSettlements);
-    setJournalEntries(initialJournalEntries);
-    showToast('Reset Complete', 'Loaded sample travel agency accounts and bookings.');
+    showToast('Reset Done', 'Travel agency accounting data reset to sample state.');
+  };
+
+  const exportDatabaseJSON = () => {
+    const db = {
+      accounts,
+      parties,
+      salesInvoices,
+      supplierBills,
+      vouchers,
+      version: '2.0.0',
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TravelAgency_Accounting_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    showToast('Backup Downloaded', 'Complete financial database exported to JSON.');
+  };
+
+  const importDatabaseJSON = (jsonStr: string): boolean => {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.accounts && parsed.parties && parsed.salesInvoices) {
+        setAccounts(parsed.accounts);
+        setParties(parsed.parties);
+        setSalesInvoices(parsed.salesInvoices);
+        setSupplierBills(parsed.supplierBills || []);
+        setVouchers(parsed.vouchers || []);
+        showToast('Database Restored', 'Accounts, ledgers and vouchers restored successfully.');
+        return true;
+      }
+      showToast('Invalid File', 'JSON structure is missing required accounting tables.', 'error');
+      return false;
+    } catch (e) {
+      showToast('Import Error', 'Failed to parse JSON file.', 'error');
+      return false;
+    }
   };
 
   return (
     <AccountingContext.Provider
       value={{
         accounts,
-        customers,
-        vendors,
-        tickets,
-        hotels,
-        umrahPackages,
-        visas,
-        refunds,
-        adms,
+        parties,
+        salesInvoices,
+        supplierBills,
         vouchers,
-        bspSettlements,
-        journalEntries,
         activeCurrency,
-        exchangeRates,
+        currencySymbol,
+        setActiveCurrency,
+        formatMoney,
         isOperating,
         operationStatusText,
         operationProgress,
         toasts,
-        setActiveCurrency,
-        formatCurrency,
-        convertAmount,
         showToast,
         dismissToast,
-        issueTicket,
-        processRefund,
-        createVoucher,
-        addHotelBooking,
-        addVisaApplication,
-        addCustomer,
-        addVendor,
-        reconcileBSPCycle,
-        postDirectJournalEntry,
-        resetToDefaults
+        addSaleInvoice,
+        addSupplierBill,
+        addVoucher,
+        addParty,
+        addAccount,
+        getPartyLedger,
+        getAccountLedger,
+        getDayBook,
+        resetToSampleData,
+        exportDatabaseJSON,
+        importDatabaseJSON
       }}
     >
       {children}
@@ -674,8 +535,6 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
 export const useAccounting = () => {
   const context = useContext(AccountingContext);
-  if (!context) {
-    throw new Error('useAccounting must be used within an AccountingProvider');
-  }
+  if (!context) throw new Error('useAccounting must be used within an AccountingProvider');
   return context;
 };
