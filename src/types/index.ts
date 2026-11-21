@@ -124,5 +124,6 @@ export interface AgencyProfile {
   isLockEnabled: boolean;
   deviceFingerprint: string;
   createdAt: string;
+  isConfigured?: boolean;
 }
 

@@ -104,20 +104,32 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (parsed.agencyName === 'Al-Haramain Travels & Tours') {
+          return {
+            ...parsed,
+            agencyName: 'My Travel Agency',
+            tagline: 'Complete Travel & Tourism Accounting',
+            licenseNo: 'IATA-LIC-001',
+            email: 'accounts@travelagency.com',
+            isConfigured: false,
+            deviceFingerprint
+          };
+        }
         return { ...parsed, deviceFingerprint };
       } catch (e) {}
     }
     return {
-      agencyName: 'Al-Haramain Travels & Tours',
-      tagline: 'Govt. Approved IATA Agency & Umrah Services',
-      licenseNo: 'IATA-PK-784210 / DTS-4921',
-      phone: '+92 300 1234567',
-      email: 'accounts@alharamaintravels.com',
-      address: 'Suite #402, Blue Area, Islamabad, Pakistan',
+      agencyName: 'My Travel Agency',
+      tagline: 'Complete Travel & Tourism Accounting',
+      licenseNo: 'IATA-LIC-001',
+      phone: '+92 300 0000000',
+      email: 'accounts@travelagency.com',
+      address: 'Office #1, Commercial Area',
       pinCode: '1234',
       isLockEnabled: true,
       deviceFingerprint,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isConfigured: false
     };
   });
 
