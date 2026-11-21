@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FAF8F5;
+    color: #231B14;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Creamy Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5EFEB;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C7B6A1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9C8770;
+}
+
+/* Shimmer Loading Animation */
+.shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(235, 227, 218, 0.4) 0%,
+    rgba(198, 157, 59, 0.25) 50%,
+    rgba(235, 227, 218, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+.creamy-glass {
+  background: rgba(250, 248, 245, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.creamy-card {
+  background: #FFFFFF;
+  border: 1px solid #EBE3DA;
+  box-shadow: 0 4px 20px -2px rgba(92, 76, 60, 0.05);
+  border-radius: 1rem;
+}
+
+/* Smooth Transitions */
+button, a, input, select {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
