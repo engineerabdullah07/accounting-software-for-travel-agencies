@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AccountingProvider, useAccounting } from './context/AccountingContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
@@ -17,16 +17,19 @@ import { ReportsView } from './components/views/ReportsView';
 import { ChartOfAccountsView } from './components/views/ChartOfAccountsView';
 import { DataBackupView } from './components/views/DataBackupView';
 
-// Modals
+// Modals & Security
 import { NewSaleInvoiceModal } from './components/modals/NewSaleInvoiceModal';
 import { NewSupplierBillModal } from './components/modals/NewSupplierBillModal';
 import { NewVoucherModal } from './components/modals/NewVoucherModal';
 import { NewPartyModal } from './components/modals/NewPartyModal';
 import { PrintSaleInvoiceModal } from './components/modals/PrintSaleInvoiceModal';
+import { LockScreen } from './components/security/LockScreen';
+import { AgencySecurityModal } from './components/security/AgencySecurityModal';
 
 import { SaleInvoice, SupplierBill, Party, VoucherType } from './types';
 
 const MainAppContent: React.FC = () => {
+  const { isLocked } = useAccounting();
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
   // Modals
@@ -41,6 +44,32 @@ const MainAppContent: React.FC = () => {
   const [partyModalDefaultType, setPartyModalDefaultType] = useState<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
 
   const [activePrintInvoice, setActivePrintInvoice] = useState<SaleInvoice | null>(null);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+
+  // PWA Install Event Handler
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handlePromptInstall = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      });
+    } else {
+      setIsSecurityModalOpen(true);
+    }
+  };
 
   const handleQuickAction = (actionType: 'sale' | 'receipt' | 'payment' | 'voucher' | 'party') => {
     if (actionType === 'sale') {
@@ -89,6 +118,22 @@ const MainAppContent: React.FC = () => {
     setIsVoucherModalOpen(true);
   };
 
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5]">
+        <LoadingBar />
+        <ToastContainer />
+        <LockScreen onOpenNewAgencyModal={() => setIsSecurityModalOpen(true)} />
+        <AgencySecurityModal
+          isOpen={isSecurityModalOpen}
+          onClose={() => setIsSecurityModalOpen(false)}
+          onPromptInstall={handlePromptInstall}
+          canInstall={!!deferredPrompt}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-cream-900 flex flex-col">
       <LoadingBar />
@@ -101,6 +146,9 @@ const MainAppContent: React.FC = () => {
             setActiveTab('sales');
           }
         }}
+        onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
+        onPromptInstall={handlePromptInstall}
+        canInstall={!!deferredPrompt}
       />
 
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
@@ -195,6 +243,13 @@ const MainAppContent: React.FC = () => {
         isOpen={!!activePrintInvoice}
         invoice={activePrintInvoice}
         onClose={() => setActivePrintInvoice(null)}
+      />
+
+      <AgencySecurityModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        onPromptInstall={handlePromptInstall}
+        canInstall={!!deferredPrompt}
       />
 
     </div>

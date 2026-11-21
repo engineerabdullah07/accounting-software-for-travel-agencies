@@ -10,7 +10,7 @@ interface PrintSaleInvoiceModalProps {
 }
 
 export const PrintSaleInvoiceModal: React.FC<PrintSaleInvoiceModalProps> = ({ invoice, isOpen, onClose }) => {
-  const { formatMoney } = useAccounting();
+  const { formatMoney, agencyProfile } = useAccounting();
 
   if (!isOpen || !invoice) return null;
 
@@ -51,17 +51,17 @@ export const PrintSaleInvoiceModal: React.FC<PrintSaleInvoiceModalProps> = ({ in
                   <Building2 className="w-4 h-4" />
                 </div>
                 <h1 className="text-xl font-extrabold tracking-tight text-cream-950">
-                  SkyHorizon Travels & Tourism
+                  {agencyProfile.agencyName}
                 </h1>
               </div>
               <p className="text-xs text-cream-600 mt-1">
-                Travel & Tourism Accounting Desk • IATA Accr. # <strong>27-2-8910</strong>
+                {agencyProfile.tagline || 'Travel & Tourism Accounting Desk'} • License # <strong>{agencyProfile.licenseNo || 'IATA-PK-DEFAULT'}</strong>
               </p>
               <p className="text-[11px] text-cream-500">
-                Suite 401, Al-Saad Aviation Tower, Mall Road, Lahore • Phone: 042-35789900
+                {agencyProfile.address || 'Head Office'} • Phone: {agencyProfile.phone || 'N/A'}
               </p>
               <p className="text-[11px] text-cream-500">
-                NTN # 4920194-8 • STRN # 32-00-4920-001
+                Email: {agencyProfile.email || 'N/A'}
               </p>
             </div>
 

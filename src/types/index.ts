@@ -112,3 +112,17 @@ export interface LedgerTransaction {
   credit: number;
   runningBalance: number;
 }
+
+export interface AgencyProfile {
+  agencyName: string;
+  tagline: string;
+  licenseNo: string;
+  phone: string;
+  email: string;
+  address: string;
+  pinCode: string;
+  isLockEnabled: boolean;
+  deviceFingerprint: string;
+  createdAt: string;
+}
+

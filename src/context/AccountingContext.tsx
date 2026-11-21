@@ -5,7 +5,8 @@ import {
   SaleInvoice,
   SupplierBill,
   Voucher,
-  LedgerTransaction
+  LedgerTransaction,
+  AgencyProfile
 } from '../types';
 import {
   initialChartOfAccounts,
@@ -14,6 +15,7 @@ import {
   initialSupplierBills,
   initialVouchers
 } from '../data/mockData';
+import { getDeviceFingerprint } from '../utils/fingerprint';
 
 interface Toast {
   id: string;
@@ -29,6 +31,14 @@ interface AccountingContextType {
   supplierBills: SupplierBill[];
   vouchers: Voucher[];
   
+  agencyProfile: AgencyProfile;
+  deviceFingerprint: string;
+  isLocked: boolean;
+  unlockApp: (pin: string) => boolean;
+  lockApp: () => void;
+  updateAgencyProfile: (profile: Partial<AgencyProfile>) => void;
+  clearDataForNewAgency: (agencyName: string, pin: string) => void;
+
   activeCurrency: string;
   currencySymbol: string;
   setActiveCurrency: (curr: string) => void;
@@ -87,6 +97,38 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return saved ? JSON.parse(saved) : initialVouchers;
   });
 
+  const deviceFingerprint = getDeviceFingerprint();
+
+  const [agencyProfile, setAgencyProfile] = useState<AgencyProfile>(() => {
+    const saved = localStorage.getItem('ta_agency_profile');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...parsed, deviceFingerprint };
+      } catch (e) {}
+    }
+    return {
+      agencyName: 'Al-Haramain Travels & Tours',
+      tagline: 'Govt. Approved IATA Agency & Umrah Services',
+      licenseNo: 'IATA-PK-784210 / DTS-4921',
+      phone: '+92 300 1234567',
+      email: 'accounts@alharamaintravels.com',
+      address: 'Suite #402, Blue Area, Islamabad, Pakistan',
+      pinCode: '1234',
+      isLockEnabled: true,
+      deviceFingerprint,
+      createdAt: new Date().toISOString()
+    };
+  });
+
+  const [isLocked, setIsLocked] = useState<boolean>(() => {
+    const savedProfile = localStorage.getItem('ta_agency_profile');
+    const isLockOn = savedProfile ? JSON.parse(savedProfile).isLockEnabled : true;
+    if (!isLockOn) return false;
+    const sessionUnlocked = sessionStorage.getItem('ta_session_unlocked');
+    return sessionUnlocked !== 'true';
+  });
+
   const [activeCurrency, setActiveCurrency] = useState<string>('PKR');
   const currencySymbol = activeCurrency === 'USD' ? '$' : activeCurrency === 'SAR' ? '﷼' : activeCurrency === 'AED' ? 'AED' : 'Rs';
 
@@ -102,7 +144,50 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem('ta_invoices', JSON.stringify(salesInvoices));
     localStorage.setItem('ta_bills', JSON.stringify(supplierBills));
     localStorage.setItem('ta_vouchers', JSON.stringify(vouchers));
-  }, [accounts, parties, salesInvoices, supplierBills, vouchers]);
+    localStorage.setItem('ta_agency_profile', JSON.stringify(agencyProfile));
+  }, [accounts, parties, salesInvoices, supplierBills, vouchers, agencyProfile]);
+
+  const unlockApp = (pin: string): boolean => {
+    if (pin.trim() === (agencyProfile.pinCode || '1234')) {
+      setIsLocked(false);
+      sessionStorage.setItem('ta_session_unlocked', 'true');
+      showToast('Vault Unlocked', `Welcome to ${agencyProfile.agencyName} Accounts.`, 'success');
+      return true;
+    } else {
+      showToast('Access Denied', 'Ghalat PIN code! Please enter correct 4-digit security PIN.', 'error');
+      return false;
+    }
+  };
+
+  const lockApp = () => {
+    sessionStorage.removeItem('ta_session_unlocked');
+    setIsLocked(true);
+    showToast('Vault Locked', 'Agency accounts have been locked for security.', 'info');
+  };
+
+  const updateAgencyProfile = (profileUpdate: Partial<AgencyProfile>) => {
+    setAgencyProfile(prev => ({ ...prev, ...profileUpdate }));
+    showToast('Agency Profile Updated', 'Settings saved to your local device vault.', 'success');
+  };
+
+  const clearDataForNewAgency = (newAgencyName: string, newPin: string) => {
+    setSalesInvoices([]);
+    setSupplierBills([]);
+    setVouchers([]);
+    setParties([]);
+    setAccounts(initialChartOfAccounts.map(a => ({ ...a, balance: 0 })));
+    setAgencyProfile(prev => ({
+      ...prev,
+      agencyName: newAgencyName.trim() || 'My Travel Agency',
+      pinCode: newPin.trim() || '1234',
+      tagline: 'Complete Travel & Tourism Accounting',
+      licenseNo: 'LIC-' + Math.floor(100000 + Math.random() * 900000),
+      createdAt: new Date().toISOString()
+    }));
+    sessionStorage.setItem('ta_session_unlocked', 'true');
+    setIsLocked(false);
+    showToast('New Agency Initialized', `100% Clean Workspace for ${newAgencyName} created!`, 'success');
+  };
 
   const showToast = (title: string, message: string, type: Toast['type'] = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -505,6 +590,13 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         salesInvoices,
         supplierBills,
         vouchers,
+        agencyProfile,
+        deviceFingerprint,
+        isLocked,
+        unlockApp,
+        lockApp,
+        updateAgencyProfile,
+        clearDataForNewAgency,
         activeCurrency,
         currencySymbol,
         setActiveCurrency,
